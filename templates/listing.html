@@ -22,6 +22,9 @@
 {% if types %}
 <nav class="ka-chips" aria-label="Druhy produktů">{% for t in types %}<a class="ka-chip" href="{{ BASE }}{{ t.slug }}/">{{ t.nazev }} <small>{{ t.n }}</small></a>{% endfor %}</nav>
 {% endif %}
+{% if chain_links %}
+<nav class="ka-chips" aria-label="Podle obchodu"><span class="ka-chips-label">Podle obchodu:</span>{% for u, cn, n in chain_links %}<a class="ka-chip" href="{{ u }}">{{ cn }} <small>{{ n }}</small></a>{% endfor %}</nav>
+{% endif %}
 {% if products %}
 <nav class="ka-chips" aria-label="Značky">{% for p in products[:40] %}<a class="ka-chip" href="{{ BASE }}{{ p.slug }}/">{{ p.znacka }} <small>{{ p['items'] | length }}</small></a>{% endfor %}</nav>
 {% endif %}
@@ -34,6 +37,35 @@
 {% if groups %}
   {% for gname, gslug, items, total in groups %}<section class="ka-section"><h2>{{ gname }} <small>{{ total }}</small></h2>{{ grid(items) }}
     {% if total > items | length and gslug in CAT_NAME %}<p><a class="ka-chip" href="{{ BASE }}kategorie/{{ gslug }}/?obchod={{ chain_name | urlencode }}">Zobrazit všech {{ total }} z kategorie {{ gname }} ›</a></p>{% endif %}</section>{% endfor %}
+{% elif pgroups %}
+<div class="ka-view" role="tablist" aria-label="Zobrazení"><button type="button" class="on" data-view="prod" role="tab">Podle produktu</button><button type="button" data-view="all" role="tab">Všechny nabídky ({{ n_now }})</button></div>
+<section class="ka-section ka-pgs" data-pane="prod">
+  {% for g in pgroups %}
+  <article class="ka-pg" data-key="{{ g.key }}">
+    <div class="ka-pg-head">
+      <div class="ka-pg-img">{% if g.img %}<img src="{{ g.img }}" alt="{{ g.nazev }}" loading="{{ 'eager' if loop.index <= 2 else 'lazy' }}" width="96" height="96">{% endif %}</div>
+      <div class="ka-pg-info">
+        <h3>{% if g.url %}<a href="{{ g.url }}">{{ g.nazev }}</a>{% else %}{{ g.nazev }}{% endif %}</h3>
+        <div class="ka-pg-meta">od <strong>{{ g.od | kc }}</strong>{% if g.chains | length > 1 %} · v {{ g.chains | length }} obchodech{% endif %}{% if g.unit %} · nejlépe {{ g.unit.jednotkova_cena | kc }}/{{ g.unit.jednotka }}{% endif %}</div>
+      </div>
+      {% if g.url %}<a class="ka-pg-more" href="{{ g.url }}">Vývoj ceny ›</a>{% endif %}
+    </div>
+    <div class="ka-pg-rows">
+      {% for o in g.rows %}
+      <div class="ka-pg-row ka-{{ o.stav }}" data-chain="{{ o.retezec_nazev }}" data-price="{{ o.cena }}" data-unit="{{ o.jednotkova_cena or '' }}" data-disc="{{ o.sleva_pct or 0 }}" data-do="{{ o.do }}">
+        <span class="ka-chain">{{ o.retezec_nazev }}</span>
+        <span class="ka-pg-name">{{ o.nazev }}{% if o.baleni %} <small>{{ o.baleni }}</small>{% endif %}{% if o.podminka %} <small class="ka-pg-cond">{{ o.podminka }}</small>{% endif %}</span>
+        <span class="ka-pg-price"><strong>{{ o.cena | kc }}</strong>{% if o.puvodni_cena %} <s>{{ o.puvodni_cena | kc }}</s>{% endif %}{% if o.sleva_pct %} <em>−{{ o.sleva_pct }} %</em>{% endif %}</span>
+        <span class="ka-pg-unit">{% if o.jednotkova_cena and o.jednotka %}{{ o.jednotkova_cena | kc }}/{{ o.jednotka }}{% endif %}</span>
+        <span class="ka-pg-valid">{% if o.stav == 'budouci' %}od {{ o.od | d_short }}{% elif o.stav == 'konci' %}<b>končí dnes</b>{% else %}do {{ o.do | d_short }}{% endif %}</span>
+        <span class="ka-pg-act">{% if o.link %}<a href="{{ o.link }}" class="ka-src"{% if o.zdroj != 'letak' %} rel="nofollow noopener" target="_blank"{% endif %}>{{ 'Leták' if o.zdroj == 'letak' else 'Web' }} ›</a>{% endif %}<button type="button" class="ka-add" data-add="{{ o.id }}" title="Přidat do nákupního seznamu">+</button></span>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+  {% endfor %}
+</section>
+<section class="ka-section" data-pane="all" hidden>{{ grid(now) }}</section>
 {% else %}
 <section class="ka-section">{{ grid(now) }}</section>
 {% endif %}

@@ -26,7 +26,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from .taxonomy import CAT_NAME, CATEGORIES, TYPE_BY_SLUG, TYPES, slugify
+from .taxonomy import BRAND_ALIAS, CAT_NAME, CATEGORIES, TYPE_BY_SLUG, TYPES, norm, slugify
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = "https://kuponmat.cz"
@@ -182,6 +182,7 @@ class Site:
                 t = TYPE_BY_SLUG[items[0]["typ"]]
                 prods[k] = {"slug": k, "nazev": f"{t['nazev'].split(' a ')[0]} {items[0]['znacka']}" if t["slug"] not in ("nealko", "pivo", "vino") else f"{items[0]['znacka']}",
                             "typ": t, "znacka": items[0]["znacka"], "items": items}
+        self.prods = prods
         # also keep pages of products seen in history (no current offer) -> noindex "není ve slevě"
         hist_prods = {k for k in self.history if k not in prods and "-" in k and k.split("-")[0] and k not in TYPE_BY_SLUG}
 
@@ -190,7 +191,9 @@ class Site:
             if not items and t["slug"] not in self.history:
                 continue
             sub = sorted([p for p in prods.values() if p["typ"]["slug"] == t["slug"]], key=lambda p: -len(p["items"]))
-            self.listing_page(BASE + t["slug"] + "/", items, title=t["nazev"], h=t["h"], typ=t, products=sub,
+            cc = Counter(o["retezec"] for o in items)
+            tlinks = [(f"{BASE}{t['slug']}/{c}/", chain_names[c], n) for c, n in cc.most_common() if n >= 3]
+            self.listing_page(BASE + t["slug"] + "/", items, title=t["nazev"], h=t["h"], typ=t, products=sub, chain_links=tlinks,
                               crumbs=[("Akce", BASE), (CAT_NAME[t["kategorie"]], f"{BASE}kategorie/{t['kategorie']}/"), (t["nazev"], "")],
                               history_key=t["slug"], related=[x for x in TYPES if x["kategorie"] == t["kategorie"] and x["slug"] != t["slug"] and by_type.get(x["slug"])])
         for k, p in prods.items():
@@ -206,13 +209,32 @@ class Site:
             self.listing_page(BASE + k + "/", [], title=nm, h=nm, typ=t, products=[], crumbs=[("Akce", BASE), (t["nazev"], BASE + t["slug"] + "/"), (nm, "")],
                               history_key=k, related=[])
 
+        MIN_X = 3   # category x chain / type x chain page only with enough offers (no thin pages)
         for cs, cn in CATEGORIES:
             items = by_cat.get(cs, [])
             if not items:
                 continue
             types = [dict(t, n=len(by_type[t["slug"]])) for t in TYPES if t["kategorie"] == cs and by_type.get(t["slug"])]
+            per = defaultdict(list)
+            for o in items:
+                per[o["retezec"]].append(o)
+            links = [(f"{BASE}kategorie/{cs}/{c}/", chain_names[c], len(v)) for c, v in sorted(per.items(), key=lambda kv: -len(kv[1])) if len(v) >= MIN_X]
             self.listing_page(f"{BASE}kategorie/{cs}/", items, title=cn, h=cn.lower(), typ=None, products=[], types=types, category=cs,
-                              crumbs=[("Akce", BASE), (cn, "")], history_key=None, related=[])
+                              crumbs=[("Akce", BASE), (cn, "")], history_key=None, related=[], chain_links=links)
+            for c, v in per.items():
+                if len(v) >= MIN_X:
+                    self.listing_page(f"{BASE}kategorie/{cs}/{c}/", v, title=f"{cn} {chain_names[c]}", h=f"{cn.lower()} v {chain_names[c]}",
+                                      typ=None, products=[], category=cs, crumbs=[("Akce", BASE), (cn, f"{BASE}kategorie/{cs}/"), (chain_names[c], "")],
+                                      history_key=None, related=[], chain_links=[l for l in links if l[1] != chain_names[c]])
+        for t in TYPES:
+            per = defaultdict(list)
+            for o in by_type.get(t["slug"], []):
+                per[o["retezec"]].append(o)
+            for c, v in per.items():
+                if len(v) >= MIN_X:
+                    self.listing_page(f"{BASE}{t['slug']}/{c}/", v, title=f"{t['nazev']} {chain_names[c]}", h=f"{t['h']} v {chain_names[c]}", typ=t,
+                                      products=[], crumbs=[("Akce", BASE), (t["nazev"], f"{BASE}{t['slug']}/"), (chain_names[c], "")],
+                                      history_key=None, related=[])
         for c in chains:
             cn = chain_names[c]
             self.listing_page(f"{BASE}obchod/{c}/", by_chain[c], title=f"Akce {cn}", h=f"akce {cn}", typ=None, products=[], chain=c, chain_name=cn,
@@ -250,8 +272,36 @@ class Site:
         self.write_index(cur)
         self.write_sitemap()
 
+    STOP = {"vybrane", "druhy", "ruzne", "druhu", "vice", "chlazene", "chlazena", "chlazeny", "baleni", "kus", "ks", "akce", "cena", "nase"}
+
+    def core_name(self, o):
+        """Normalized product line without sizes / 'vybrané druhy' -> groups the same product of a no-brand offer."""
+        w = [x for x in re.findall(r"[a-z]{3,}", norm(o["nazev"])) if x not in self.STOP]
+        return " ".join(w[:3])
+
+    def product_groups(self, offers):
+        """Kupi-like view: one block per product (type+brand, else same line name) with all chains' offers under it."""
+        g = defaultdict(list)
+        for o in offers:
+            g[o.get("produkt") or f"{o.get('typ') or 'x'}|{self.core_name(o)}"].append(o)
+        out = []
+        for k, items in g.items():
+            items = sorted(items, key=lambda o: o["cena"])
+            p = self.prods.get(k)
+            img_o = next((o for o in items if o.get("img") or o.get("img_url")), items[0])
+            units = [o for o in items if o.get("jednotkova_cena") and o.get("jednotka")]
+            out.append({
+                "key": k, "nazev": p["nazev"] if p else items[0]["nazev"], "url": f"{BASE}{k}/" if p else None,
+                "img": self.card(img_o)["img_src"], "od": items[0]["cena"], "do": max(o["cena"] for o in items),
+                "chains": sorted({o["retezec_nazev"] for o in items}), "n": len(items),
+                "unit": min(units, key=lambda o: o["jednotkova_cena"]) if units else None,
+                "rows": [self.card(o) for o in items[:12]],
+            })
+        out.sort(key=lambda x: (-len(x["chains"]), -x["n"], x["od"]))
+        return out
+
     def listing_page(self, path, items, *, title, h, typ, products, crumbs, history_key, related, types=None, category=None,
-                     chain=None, chain_name=None, brand=None, group_by_cat=False):
+                     chain=None, chain_name=None, brand=None, group_by_cat=False, chain_links=None):
         now = [o for o in items if o["od"] <= self.today]
         fut = [o for o in items if o["od"] > self.today]
         now = sorted(now, key=lambda o: (o["cena"] if not o.get("jednotkova_cena") else o["cena"], o["retezec"]))
@@ -331,7 +381,9 @@ class Site:
                     chains=chains.most_common(), cheapest=cheapest, best_unit=best_unit, od=od, do=do, typ=typ, products=products, crumbs=crumbs,
                     chart=self.chart(history_key) if history_key else None, related=related, types=types, category=category, chain=chain,
                     chain_name=chain_name, brand=brand, groups=groups, faq=faq, letak_chain=(chain if chain in LETAK_CHAINS else None),
-                    last=self.last_prices(history_key) if not now and history_key else None)
+                    last=self.last_prices(history_key) if not now and history_key else None,
+                    pgroups=(self.product_groups(now)[:80] if now and not chain and not brand and len(now) > 3 else None),
+                    chain_links=chain_links)
 
     def last_prices(self, key):
         h = self.history.get(key) or {}
@@ -401,6 +453,8 @@ def main():
         o["kategorie"] = TYPE_BY_SLUG[o["typ"]]["kategorie"] if o["typ"] else None
         if o.get("zdroj") == "letak" or not o.get("znacka"):
             o["znacka"] = _brand(o["nazev"]) or (o.get("znacka") if o.get("zdroj") != "letak" else None)
+        if o.get("znacka"):
+            o["znacka"] = BRAND_ALIAS.get(o["znacka"], o["znacka"])
         o["retezec_nazev"] = CHAIN_NAMES.get(o["retezec"], o.get("retezec_nazev"))
     for o in offers:   # snapshots written before od/do defaults existed
         o["od"] = o.get("od") or a.today

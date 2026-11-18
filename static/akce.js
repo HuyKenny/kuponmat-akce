@@ -17,20 +17,40 @@
   var tools = $('[data-tools]');
   if (tools) {
     var chain = '';
-    var grids = $$('.ka-section:not(.ka-future) .ka-grid');
+    var grids = $$('.ka-section:not(.ka-future) .ka-grid').concat($$('.ka-pg-rows'));
+    function cmp(key) {
+      return function (a, b) {
+        if (key === 'disc') return (+b.dataset.disc) - (+a.dataset.disc);
+        if (key === 'do') return a.dataset.do < b.dataset.do ? -1 : a.dataset.do > b.dataset.do ? 1 : 0;
+        if (key === 'unit') return (+a.dataset.unit || 1e9) - (+b.dataset.unit || 1e9);
+        return (+a.dataset.price) - (+b.dataset.price);
+      };
+    }
     function apply() {
       var key = $('[data-sort]', tools).value;
       grids.forEach(function (g) {
-        var cards = $$('.ka-card', g);
+        var cards = $$('.ka-card, .ka-pg-row', g);
         cards.forEach(function (c) { c.hidden = !!chain && c.dataset.chain !== chain; });
-        cards.sort(function (a, b) {
-          if (key === 'disc') return (+b.dataset.disc) - (+a.dataset.disc);
-          if (key === 'do') return a.dataset.do < b.dataset.do ? -1 : a.dataset.do > b.dataset.do ? 1 : 0;
-          if (key === 'unit') return (+a.dataset.unit || 1e9) - (+b.dataset.unit || 1e9);
-          return (+a.dataset.price) - (+b.dataset.price);
-        }).forEach(function (c) { g.appendChild(c); });
+        cards.sort(cmp(key)).forEach(function (c) { g.appendChild(c); });
       });
+      // product blocks: hide those without a visible row, order by their best visible row
+      var box = $('.ka-pgs');
+      if (box) {
+        var blocks = $$('.ka-pg', box);
+        blocks.forEach(function (p) { p.hidden = !$$('.ka-pg-row', p).some(function (r) { return !r.hidden; }); });
+        if (key !== 'price' || chain) blocks.sort(function (a, b) {
+          var ra = $$('.ka-pg-row', a).filter(function (r) { return !r.hidden; })[0], rb = $$('.ka-pg-row', b).filter(function (r) { return !r.hidden; })[0];
+          if (!ra || !rb) return ra ? -1 : rb ? 1 : 0;
+          return cmp(key)(ra, rb);
+        }).forEach(function (p) { box.appendChild(p); });
+      }
     }
+    $$('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        $$('[data-view]').forEach(function (x) { x.classList.toggle('on', x === b); });
+        $$('[data-pane]').forEach(function (p) { p.hidden = p.dataset.pane !== b.dataset.view; });
+      });
+    });
     $$('.ka-filter button', tools).forEach(function (b) {
       b.addEventListener('click', function () {
         chain = b.dataset.chain;
@@ -51,15 +71,15 @@
     $$('[data-add]').forEach(function (b) {
       var on = !!list[b.dataset.add];
       b.classList.toggle('on', on);
-      b.textContent = on ? '✓ v seznamu' : '+ seznam';
+      b.textContent = b.closest('.ka-pg-row') ? (on ? '✓' : '+') : (on ? '✓ v seznamu' : '+ seznam');
     });
   }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-add]');
     if (!b) return;
-    var id = b.dataset.add, card = b.closest('.ka-card');
+    var id = b.dataset.add, card = b.closest('.ka-card, .ka-pg-row');
     if (list[id]) delete list[id];
-    else list[id] = { n: $('.ka-name', card).textContent, c: card.dataset.chain, p: +card.dataset.price, d: card.dataset.do };
+    else list[id] = { n: ($('.ka-name', card) || $('.ka-pg-name', card)).textContent.trim(), c: card.dataset.chain, p: +card.dataset.price, d: card.dataset.do };
     ls('ka-list', list); syncList();
   });
   syncList();

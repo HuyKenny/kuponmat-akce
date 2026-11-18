@@ -168,7 +168,7 @@ Jacobs Tchibo Nescafé Lavazza Douwe Egberts Dallmayr Café Royal Segafredo Davi
 Pilsner Urquell Gambrinus Kozel Velkopopovický Kozel Staropramen Budweiser Budvar Radegast Krušovice Bernard Birell Svijany Ostravar Braník Heineken Rebel Zubr Lobkowicz Holba Primátor Starobrno Plzeň
 Bohemia Sekt Božkov Jindřichohradecký Captain Morgan Bacardi Absolut Smirnoff Finlandia Amundsen Becherovka Jägermeister Fernet Stock Jameson Jack Daniel's Ballantine's Tullamore Gordon's Beefeater Bombay Metaxa Baileys
 Coca-Cola Pepsi Sprite Fanta Mattoni Magnesia Dobrá voda Kofola Rajec Poděbradka Red Bull Monster Big Shock Relax Hello Rauch Cappy Toma Pfanner Rioba Hello
-Danone Activia Actimel Danette Pilos Olma Madeta Kunín Hollandia Zott Zottarella Gervais Lipánek Pribináček Jihočeský Lučina Apetito Eidam Président Hochland Almette Philadelphia Alpro Milbona Tatra Kostka Ehrmann Müller Bonduelle Hamé Giana Franz Josef Hellmann's Heinz Kand Spak Vitana Podravka Dr. Oetker Panzani Barilla Kolínská Babiččina volba Ceria Hera Rama Flora Perla Jihočeská Dobrá
+Danone Activia Actimel Danette Pilos Olma Madeta Kunín Hollandia Zott Zottarella Gervais Lipánek Pribináček Lučina Apetito Président Hochland Almette Philadelphia Alpro Milbona Tatra Ehrmann Müller Bonduelle Hamé Giana Franz Josef Hellmann's Heinz Kand Spak Vitana Podravka Dr. Oetker Panzani Barilla Kolínská Babiččina volba Ceria Hera Rama Flora Perla
 Kostelecké Krahulík Le & Co Vysočina Poličan Herkules Madeland Tulip Váhala Steinhauser Kmotr Penam
 Persil Ariel Lenor Coccolino Silan Vanish Woolite Perwoll Jar Pur Finish Somat Savo Domestos Duck Bref Cif Frosch Mr. Proper Air Wick Glade Ambi Pur Zewa Linteo Harmony Velvet Regina Tempo Perlenka
 Nivea Dove Palmolive Colgate Signal Lacalut Garnier Fructis Elseve Listerine Gillette Head & Shoulders Rexona Fa Old Spice Axe Schauma Syoss Corega Sensodyne Parodontax Elmex Duschi Dermacol Bioderma Neutrogena Vichy
@@ -203,4 +203,10 @@ def brand(title: str) -> str | None:
         m = rx.search(t)
         if m and (best is None or m.start() < best[1]):
             best = (b, m.start())
-    return best[0] if best else None
+    return BRAND_ALIAS.get(best[0], best[0]) if best else None
+
+
+# one brand under several names -> one product page
+BRAND_ALIAS = {"Kozel": "Velkopopovický Kozel", "Budweiser": "Budweiser Budvar", "Budvar": "Budweiser Budvar", "KitKat": "Kit Kat",
+               "Zottarella": "Zott", "Kofila": "Orion", "Margot": "Orion", "Studentská": "Orion", "Fidorka": "Opavia", "Tatranky": "Opavia",
+               "Horalky": "Sedita", "Raffaello": "Ferrero", "Cien Beauty": "Cien", "Dobrá voda": "Dobrá voda"}

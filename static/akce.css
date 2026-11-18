@@ -113,3 +113,40 @@
 @media (max-width:560px){.ka-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ka-body{padding:9px}.ka-price strong{font-size:20px}
   .ka-search button{padding:0 12px}.ka-cats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ka-cat-name{font-size:15px}.ka-cat-types{display:none}
   .ka-section h2{font-size:21px}.ka-tools{position:static}}
+
+/* product view (Kupi-like): one block per product, all chains' offers in rows */
+.ka-view{display:inline-flex;border:2px solid var(--k-ink);border-radius:999px;overflow:hidden;margin:4px 0 6px;background:var(--k-paper)}
+.ka-view button{border:0;background:none;padding:8px 16px;font-weight:800;cursor:pointer;color:var(--k-ink);font-size:14px}
+.ka-view button.on{background:var(--k-ink);color:#fff}
+.ka-chips-label{font-size:13px;font-weight:700;color:var(--k-ink3);align-self:center;margin-right:2px}
+.ka-pgs{display:flex;flex-direction:column;gap:14px}
+.ka-pg{border:2px solid var(--k-ink);border-radius:14px;background:var(--k-paper);overflow:hidden}
+.ka-pg[hidden]{display:none}
+.ka-pg-head{display:flex;align-items:center;gap:14px;padding:12px 14px;border-bottom:1.5px solid var(--k-line);background:var(--k-sand)}
+.ka-pg-img{width:76px;height:76px;flex:none;border:1.5px solid var(--k-ink);border-radius:10px;overflow:hidden;background:#fff}
+.ka-pg-img img{width:100%;height:100%;object-fit:cover;display:block}
+.ka-pg-info{flex:1;min-width:0}
+.ka-pg-info h3{margin:0 0 3px;font-size:19px;line-height:1.2}
+.ka-pg-info h3 a{text-decoration:none}.ka-pg-info h3 a:hover{text-decoration:underline}
+.ka-pg-meta{font-size:13.5px;color:var(--k-ink2)}
+.ka-pg-meta strong{color:var(--k-tomato-ink);font-size:16px}
+.ka-pg-more{font-size:13px;font-weight:700;white-space:nowrap}
+.ka-pg-row{display:grid;grid-template-columns:96px minmax(0,1fr) 210px 92px 76px 96px;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--k-line);font-size:14px}
+.ka-pg-row:last-child{border-bottom:0}
+.ka-pg-row[hidden]{display:none}
+.ka-pg-row .ka-chain{justify-self:start}
+.ka-pg-name small{color:var(--k-ink3);font-size:12.5px}
+.ka-pg-cond{display:block}
+.ka-pg-price strong{font-family:var(--k-head);font-size:18px;color:var(--k-tomato-ink)}
+.ka-pg-price s{color:var(--k-ink3);font-size:12.5px}
+.ka-pg-price em{font-style:normal;font-weight:800;font-size:12px;color:#fff;background:var(--k-tomato);border-radius:6px;padding:1px 5px;margin-left:2px}
+.ka-pg-unit,.ka-pg-valid{font-size:12.5px;color:var(--k-ink3)}
+.ka-pg-valid b{color:var(--k-tomato-ink)}
+.ka-pg-act{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.ka-pg-act .ka-add{padding:2px 9px;font-size:14px}
+@media (max-width:760px){
+  .ka-pg-row{grid-template-columns:auto 1fr auto;grid-template-areas:"chain price act" "name name name" "unit valid valid";row-gap:3px}
+  .ka-pg-row .ka-chain{grid-area:chain}.ka-pg-name{grid-area:name}.ka-pg-price{grid-area:price;justify-self:end}
+  .ka-pg-unit{grid-area:unit}.ka-pg-valid{grid-area:valid;justify-self:end}.ka-pg-act{grid-area:act}
+  .ka-pg-img{width:60px;height:60px}.ka-pg-info h3{font-size:16px}.ka-pg-more{display:none}
+}

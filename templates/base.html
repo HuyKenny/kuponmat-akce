@@ -10,7 +10,7 @@
 <meta property="og:url" content="{{ canonical }}">
 <meta property="og:site_name" content="KupónMat">
 {% if og_image %}<meta property="og:image" content="{{ og_image }}"><meta name="twitter:card" content="summary_large_image">{% endif %}
-<link rel="stylesheet" href="{{ BASE }}akce.css?v=2">
+<link rel="stylesheet" href="{{ BASE }}akce.css?v=3">
 {% block schema %}{% endblock %}
 </head>
 {{ shell.body_open | safe }}
@@ -27,5 +27,5 @@
     {% block content %}{% endblock %}
   </div>
 </main>
-<script src="{{ BASE }}akce.js?v=2" defer></script>
+<script src="{{ BASE }}akce.js?v=3" defer></script>
 {{ shell.foot | safe }}
