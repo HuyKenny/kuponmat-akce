@@ -62,7 +62,12 @@ def stahni(session) -> list[Letak]:
 
     letaky: list[Letak] = []
     videne: set[str] = set()
-    for cesta in odkazy:
+    # 18. 11. 2026: velký leták má na své stránce záložky „…-aktualni" / „…-nasledujici" a aktuální týden bývá
+    # pod „následující" (web Billy se zpožďuje) → odkazy nalezené na podstránkách se procházejí taky.
+    i = 0
+    while i < len(odkazy):
+        cesta = odkazy[i]
+        i += 1
         if "/special-" in cesta and not VCETNE_REGIONALNICH:
             continue
         url = "https://www.billa.cz" + html.unescape(cesta)
@@ -70,6 +75,9 @@ def stahni(session) -> list[Letak]:
         if d.status_code != 200:
             print(f"  ! Billa: {cesta} vrací {d.status_code}, přeskakuji")
             continue
+        for nove in ODKAZ.findall(d.text):
+            if nove not in odkazy and "velky-letak" in nove:
+                odkazy.append(nove)
         m = PDF.search(d.text)
         if not m:
             print(f"  – Billa: {cesta} nemá PDF, přeskakuji")

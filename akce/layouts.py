@@ -27,6 +27,7 @@ class Layout:
     title_line_gap: float = 1.6
     detail_gap: float = 40.0
     price_side: str = "any"               # above / below / right / any
+    side_penalty: float = 60.0            # cost added when the price sits on the wrong side of the title
     max_dist: float = 90.0
     member_label: str = "s aplikací/kartou"
     member_rx: str = r"aplikac|kartou|kart[ay]|klub|kupón|clubcard"

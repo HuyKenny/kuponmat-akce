@@ -236,12 +236,13 @@ def rect_dist(b: Block, p: Price, L) -> float:
     dy = max(b.y0 - p.y1, 0, p.y0 - b.y1)
     cost = math.hypot(dx, dy)
     # directional preference of the chain: where the price sits relative to the title block
+    pen = getattr(L, "side_penalty", 60.0)
     if L.price_side == "above" and p.cy > b.y1 + 5:
-        cost += 60
+        cost += pen
     if L.price_side == "below" and p.cy < b.y0 - 5:
-        cost += 60
+        cost += pen
     if L.price_side == "right" and p.cx < b.x0:
-        cost += 60
+        cost += pen
     return cost
 
 
