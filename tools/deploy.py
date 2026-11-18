@@ -94,7 +94,8 @@ def main():
         ensure_dir(f, f"{REMOTE}/{Path(k).parent}" if str(Path(k).parent) != "." else REMOTE, made)
         with open(root / k, "rb") as fh:
             f.storbinary(f"STOR {REMOTE}/{k}", fh)
-        f.sendcmd(f"SITE CHMOD 644 {REMOTE}/{k}")   # WEDOS uploads as 640 -> Apache 403
+        if k not in old:   # new file: WEDOS creates 640 -> Apache 403; an overwritten file keeps its 644
+            f.sendcmd(f"SITE CHMOD 644 {REMOTE}/{k}")
         if i % 200 == 0:
             print(f"  {i}/{len(changed)}", file=sys.stderr)
     for k in removed:

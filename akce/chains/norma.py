@@ -48,10 +48,20 @@ class NormaLayout(Layout):
                     return True
         return False
 
+    def _lone_lower(self, s):
+        """Lower-case first span of a title ("pruhovaný běhoun") is fine when no other title line sits right above it."""
+        if s.size < 8.5 or not (s.font.endswith("ExtraBlackCn")):
+            return False
+        for o in self._page:
+            if o is not s and o.font.endswith("ExtraBlackCn") and 0 < s.y0 - o.y0 < 12 and abs(o.x0 - s.x0) < 8 \
+                    and not JUNK.search(o.text) and not re.search(r"cca|\d\s*[×x]", o.text):
+                return False
+        return not re.search(r"cca|^\W", s.text)
+
     def is_title(self, s):
         self._call("t", s)
         tx = s.text.strip()
-        if JUNK.search(tx) or tx[:1] in "–-" or tx[:1].islower() or self._redundant(s):
+        if JUNK.search(tx) or tx[:1] in "–-" or (tx[:1].islower() and not self._lone_lower(s)) or self._redundant(s):
             return False
         ok = super().is_title(s)
         if ok and not getattr(s, "_al", False):
@@ -61,7 +71,7 @@ class NormaLayout(Layout):
             i = self._page.index(s)
             for p in reversed(self._page[max(0, i - 4):i]):
                 if getattr(p, "_al", False) and abs(p.size - s.size) < 0.5 and 0 < s.y0 - p.y0 < s.size * 1.6 \
-                        and abs(s.x1 - p.x1) < 3.5 and abs(s.x0 - p.x0) >= 3.5:
+                        and abs(s.x0 - p.x0) >= 3.5 and (abs(s.x1 - p.x1) < 3.5 or abs(s.cx - p.cx) < 3.5 or -35 <= s.x0 - p.x0 <= 3):
                     s.x0 = p.x0
                     break
         return ok
@@ -75,7 +85,7 @@ class NormaLayout(Layout):
             s.text = s.text.replace("%", "% obj.")           # alcohol strength is not a discount
         # cover page: lift the "levnější o 20 %" discount together with the price (see is_price)
         if re.fullmatch(r"\d{1,2}%", s.text.strip()) and s.size >= 20 and not getattr(s, "_up", False):
-            d = SHIFT if self._is_cover() else SHIFT2
+            d = SHIFT if self._is_cover() else 0
             s.y0 -= d
             s.y1 -= d
             s._up = True
@@ -90,7 +100,7 @@ class NormaLayout(Layout):
             if self._is_cover():
                 d = SHIFT if (s.color != 0xffffff and (s.size >= 33 or (9.5 <= s.size <= 10.5 and "ExtraBlack" in s.font))) else 0
             else:
-                d = SHIFT2
+                d = 0
             s.y0 -= d
             s.y1 -= d
             s._up = True
@@ -107,6 +117,7 @@ LAYOUT = NormaLayout(
     min_price_size=12,
     main_size=20,
     price_side="below",
-    max_dist=230,
+    side_penalty=150,
+    max_dist=150,
     member_label="s kartou",
 )

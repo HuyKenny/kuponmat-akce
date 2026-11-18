@@ -365,7 +365,17 @@ class Site:
         graph = [{"@type": "BreadcrumbList", "itemListElement": [
             {"@type": "ListItem", "position": i + 1, "name": n, **({"item": SITE + u} if u else {"item": SITE + path})}
             for i, (n, u) in enumerate([("Domů", "/")] + list(crumbs))]}]
-        if now:
+        pg = self.product_groups(now)[:80] if now and not chain and not brand and len(now) > 3 else None
+        if pg:   # product view: one Product with an AggregateOffer (price range over chains) per product block
+            graph.append({"@type": "ItemList", "name": f"{title} v akci", "numberOfItems": len(pg), "itemListElement": [
+                {"@type": "ListItem", "position": i + 1, "item": {
+                    "@type": "Product", "name": g["nazev"],
+                    **({"image": (g["img"] if g["img"].startswith("http") else SITE + g["img"])} if g["img"] else {}),
+                    **({"url": SITE + g["url"]} if g["url"] else {}),
+                    "offers": {"@type": "AggregateOffer", "priceCurrency": "CZK", "lowPrice": f"{g['od']:.2f}", "highPrice": f"{g['do']:.2f}",
+                               "offerCount": g["n"], "availability": "https://schema.org/InStoreOnly"}}}
+                for i, g in enumerate(pg[:20])]})
+        elif now:
             graph.append({"@type": "ItemList", "name": f"{title} v akci", "numberOfItems": len(now), "itemListElement": [
                 {"@type": "ListItem", "position": i + 1, "item": {
                     "@type": "Product", "name": o["nazev"], **({"brand": {"@type": "Brand", "name": o["znacka"]}} if o.get("znacka") else {}),
@@ -382,7 +392,7 @@ class Site:
                     chart=self.chart(history_key) if history_key else None, related=related, types=types, category=category, chain=chain,
                     chain_name=chain_name, brand=brand, groups=groups, faq=faq, letak_chain=(chain if chain in LETAK_CHAINS else None),
                     last=self.last_prices(history_key) if not now and history_key else None,
-                    pgroups=(self.product_groups(now)[:80] if now and not chain and not brand and len(now) > 3 else None),
+                    pgroups=pg,
                     chain_links=chain_links)
 
     def last_prices(self, key):

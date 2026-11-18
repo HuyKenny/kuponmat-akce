@@ -150,3 +150,6 @@
   .ka-pg-unit{grid-area:unit}.ka-pg-valid{grid-area:valid;justify-self:end}.ka-pg-act{grid-area:act}
   .ka-pg-img{width:60px;height:60px}.ka-pg-info h3{font-size:16px}.ka-pg-more{display:none}
 }
+
+.ka-cut{display:none!important}
+.ka-more-btn{display:block;margin:14px auto 0;padding:10px 22px;font-weight:800}

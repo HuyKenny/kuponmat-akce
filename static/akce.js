@@ -45,6 +45,26 @@
         }).forEach(function (p) { box.appendChild(p); });
       }
     }
+    // "show more": keep long lists short (48 cards / 30 product blocks), reveal on click
+    function paginate() {
+      $$('.ka-more-btn').forEach(function (b) { b.parentNode.removeChild(b); });
+      $$('.ka-section:not(.ka-future) .ka-grid').concat($$('.ka-pgs')).forEach(function (g) {
+        var isPg = g.classList.contains('ka-pgs');
+        var step = isPg ? 30 : 48, lim = +(g.dataset.lim || step);
+        var vis = $$(isPg ? '.ka-pg' : '.ka-card', g).filter(function (c) { return !c.hidden; });
+        vis.forEach(function (c, i) { c.classList.toggle('ka-cut', i >= lim); });
+        if (vis.length > lim) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'ka-chip ka-more-btn';
+          b.textContent = 'Zobrazit další (' + (vis.length - lim) + ')';
+          b.addEventListener('click', function () { g.dataset.lim = lim + step; paginate(); });
+          g.parentNode.insertBefore(b, g.nextSibling);
+        }
+      });
+    }
+    var applyBase = apply;
+    apply = function () { applyBase(); paginate(); };
+    paginate();
     $$('[data-view]').forEach(function (b) {
       b.addEventListener('click', function () {
         $$('[data-view]').forEach(function (x) { x.classList.toggle('on', x === b); });
