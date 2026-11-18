@@ -72,6 +72,7 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_PORT: ${{ secrets.FTP_PORT }}
+          FTP_ROOT: /domains/kuponmat.cz
         run: python -m tools.deploy
       - name: Cloudflare purge + IndexNow
         env:

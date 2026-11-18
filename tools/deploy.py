@@ -2,7 +2,8 @@
 
     python -m tools.deploy [--dist dist] [--dry]
 
-Credentials from env: FTP_HOST, FTP_USER, FTP_PASSWORD (GitHub secrets), optional FTP_PORT.
+Credentials from env: FTP_HOST, FTP_USER, FTP_PASSWORD (GitHub secrets), optional FTP_PORT, FTP_ROOT (web root,
+default /domains/kuponmat.cz = the shared WEDOS hosting the site really runs on), FTP_TLS=1 for FTPS.
 A manifest (path -> sha1) is kept on the server in /akce/.manifest.json, so a run only sends what changed.
 Afterwards prints the changed page URLs (for the Cloudflare purge / IndexNow steps) into dist/changed-urls.txt.
 """
@@ -16,7 +17,7 @@ import ssl
 import sys
 from pathlib import Path
 
-REMOTE = "/akce"
+REMOTE = os.environ.get("FTP_ROOT", "/domains/kuponmat.cz").rstrip("/") + "/akce"
 SITE = "https://kuponmat.cz"
 
 
@@ -31,6 +32,11 @@ class FTPS(ftplib.FTP_TLS):
 
 
 def connect():
+    if os.environ.get("FTP_TLS", "0") != "1":
+        f = ftplib.FTP(timeout=90)
+        f.connect(os.environ["FTP_HOST"], int(os.environ.get("FTP_PORT") or 21))
+        f.login(os.environ["FTP_USER"], os.environ["FTP_PASSWORD"])
+        return f
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -54,6 +60,7 @@ def ensure_dir(f, d, made):
             continue
         try:
             f.mkd(cur)
+            f.sendcmd(f"SITE CHMOD 755 {cur}")   # WEDOS creates 750 -> Apache 403
         except ftplib.error_perm:
             pass
         made.add(cur)
@@ -77,7 +84,8 @@ def main():
     changed = [k for k, v in local.items() if old.get(k) != v]
     removed = [k for k in old if k not in local]
     # index.html files and data first-time: upload html last so pages never point to missing images
-    changed.sort(key=lambda k: (k.endswith(".html"), k))
+    # assets first, then the hub index (the /akce/ directory must never be without it), then the other pages
+    changed.sort(key=lambda k: (k.endswith(".html"), k != "index.html", k))
     print(f"{len(local)} files, {len(changed)} changed, {len(removed)} removed", file=sys.stderr)
     if a.dry:
         return
@@ -86,6 +94,7 @@ def main():
         ensure_dir(f, f"{REMOTE}/{Path(k).parent}" if str(Path(k).parent) != "." else REMOTE, made)
         with open(root / k, "rb") as fh:
             f.storbinary(f"STOR {REMOTE}/{k}", fh)
+        f.sendcmd(f"SITE CHMOD 644 {REMOTE}/{k}")   # WEDOS uploads as 640 -> Apache 403
         if i % 200 == 0:
             print(f"  {i}/{len(changed)}", file=sys.stderr)
     for k in removed:
@@ -94,6 +103,7 @@ def main():
         except ftplib.error_perm:
             pass
     f.storbinary(f"STOR {REMOTE}/.manifest.json", io.BytesIO(json.dumps(local).encode()))
+    f.sendcmd(f"SITE CHMOD 600 {REMOTE}/.manifest.json")
     f.quit()
     urls = sorted({SITE + "/akce/" + (str(Path(k).parent) + "/" if str(Path(k).parent) != "." else "")
                    for k in changed + removed if k.endswith("index.html")})
