@@ -90,14 +90,51 @@ def main():
     if a.dry:
         return
     made = set()
-    for i, k in enumerate(changed):
+    for k in changed:   # directories first, on the main connection
         ensure_dir(f, f"{REMOTE}/{Path(k).parent}" if str(Path(k).parent) != "." else REMOTE, made)
-        with open(root / k, "rb") as fh:
-            f.storbinary(f"STOR {REMOTE}/{k}", fh)
-        if k not in old:   # new file: WEDOS creates 640 -> Apache 403; an overwritten file keeps its 644
-            f.sendcmd(f"SITE CHMOD 644 {REMOTE}/{k}")
-        if i % 200 == 0:
-            print(f"  {i}/{len(changed)}", file=sys.stderr)
+
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    local_conn = threading.local()
+    done = dict(old)          # manifest of what is really on the server (saved every 300 files -> a killed run resumes)
+    lock = threading.Lock()
+    counter = [0]
+
+    def put(k):
+        c = getattr(local_conn, "c", None)
+        if c is None:
+            c = local_conn.c = connect()
+        for attempt in range(3):
+            try:
+                with open(root / k, "rb") as fh:
+                    c.storbinary(f"STOR {REMOTE}/{k}", fh)
+                if k not in old:   # new file: WEDOS creates 640 -> Apache 403; an overwritten file keeps its 644
+                    c.sendcmd(f"SITE CHMOD 644 {REMOTE}/{k}")
+                break
+            except (ftplib.all_errors) as e:
+                if attempt == 2:
+                    raise
+                try:
+                    c.close()
+                except Exception:
+                    pass
+                c = local_conn.c = connect()
+        with lock:
+            done[k] = local[k]
+            counter[0] += 1
+            if counter[0] % 300 == 0:
+                print(f"  {counter[0]}/{len(changed)}", file=sys.stderr)
+                f.storbinary(f"STOR {REMOTE}/.manifest.json", io.BytesIO(json.dumps(done).encode()))
+
+    assets = [k for k in changed if not k.endswith(".html")]
+    hub = [k for k in changed if k == "index.html"]
+    pages = [k for k in changed if k.endswith(".html") and k != "index.html"]
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        list(ex.map(put, assets))
+    for k in hub:   # the /akce/ directory must never be without its index
+        put(k)
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        list(ex.map(put, pages))
     for k in removed:
         try:
             f.delete(f"{REMOTE}/{k}")
