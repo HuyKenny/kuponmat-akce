@@ -1,0 +1,30 @@
+{{ shell.head | safe }}
+<title>{{ title }}</title>
+<meta name="description" content="{{ description }}">
+<meta name="robots" content="{{ robots }}, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="{{ canonical }}">
+<meta property="og:locale" content="cs_CZ">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ description }}">
+<meta property="og:url" content="{{ canonical }}">
+<meta property="og:site_name" content="KupónMat">
+<link rel="stylesheet" href="{{ BASE }}akce.css?v=1">
+{% block schema %}{% endblock %}
+</head>
+{{ shell.body_open | safe }}
+<main class="km-akce">
+  <div class="km-container">
+    {% if crumbs %}
+    <nav class="ka-crumbs" aria-label="Drobečková navigace"><a href="/">Domů</a>{% for n, u in crumbs %} <span>›</span> {% if u %}<a href="{{ u }}">{{ n }}</a>{% else %}<span aria-current="page">{{ n }}</span>{% endif %}{% endfor %}</nav>
+    {% endif %}
+    <form class="ka-search" action="{{ BASE }}hledat/" role="search">
+      <input type="search" name="q" placeholder="Hledat v akcích, např. máslo, Milka, Pilsner…" aria-label="Hledat v akcích" autocomplete="off">
+      <button type="submit">Hledat</button>
+      <a class="ka-fav-link" href="{{ BASE }}oblibene/" title="Oblíbené a nákupní seznam">★ <span class="ka-list-count" hidden></span></a>
+    </form>
+    {% block content %}{% endblock %}
+  </div>
+</main>
+<script src="{{ BASE }}akce.js?v=1" defer></script>
+{{ shell.foot | safe }}

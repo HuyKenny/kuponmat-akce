@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "macros.html" import grid %}
+{% block schema %}<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "CollectionPage", "name": "Akce v letácích", "url": SITE ~ BASE, "isPartOf": {"@type": "WebSite", "name": "KupónMat", "url": SITE ~ "/"}} | tojson | safe }}</script>{% endblock %}
+{% block content %}
+<div class="ka-head">
+  <h1>Akce v letácích tento týden</h1>
+  <p class="ka-intro">{{ n }} akčních nabídek z letáků a webů {{ chains | map(attribute=1) | join(', ') }}. U každé nabídky je cena, cena za kg nebo litr, platnost a odkaz na stranu letáku.</p>
+</div>
+
+<section class="ka-section"><h2>Kategorie</h2>
+  <div class="ka-cats">{% for c in cats %}
+    <div class="ka-cat"><a class="ka-cat-name" href="{{ BASE }}kategorie/{{ c.slug }}/">{{ c.nazev }} <small>{{ c.n }}</small></a>
+      <div class="ka-cat-types">{% for t in c.types[:8] %}<a href="{{ BASE }}{{ t.slug }}/">{{ t.nazev }}</a>{% endfor %}</div></div>
+  {% endfor %}</div>
+</section>
+
+<section class="ka-section"><h2>Obchody</h2>
+  <nav class="ka-chips">{% for c, cn, k in chains %}<a class="ka-chip" href="{{ BASE }}obchod/{{ c }}/">{{ cn }} <small>{{ k }}</small></a>{% endfor %}</nav>
+</section>
+
+{% if top %}
+<section class="ka-section"><h2>Největší slevy tohoto týdne</h2>{{ grid(top) }}</section>
+{% endif %}
+
+{% if popular %}
+<section class="ka-section"><h2>Značky v akci</h2>
+  <nav class="ka-chips">{% for p in popular %}<a class="ka-chip" href="{{ BASE }}{{ p.slug }}/">{{ p.nazev }} <small>{{ p['items'] | length }}</small></a>{% endfor %}</nav>
+</section>
+{% endif %}
+<p class="ka-note">Přehled se obnovuje každou noc a ráno po vyjití nových letáků. Ceny nezaručujeme, před nákupem je ověřte v prodejně. <a href="/letaky/">Všechny letáky ›</a></p>
+{% endblock %}

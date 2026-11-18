@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="ka-head"><h1>Oblíbené a nákupní seznam</h1>
+  <p class="ka-intro">Seznam i oblíbené se ukládají jen ve vašem prohlížeči. Akce oblíbených produktů tu uvidíte po každém vyjití letáků.</p></div>
+<section class="ka-section"><h2>Nákupní seznam</h2><div data-list><p class="ka-note">Seznam je prázdný. U nabídek klikněte na „+ seznam“.</p></div>
+  <p><button type="button" class="ka-chip" data-list-clear hidden>Vyprázdnit seznam</button></p></section>
+<section class="ka-section"><h2>Sledované produkty</h2><div class="ka-grid" data-favs></div><p class="ka-note" data-favs-empty>Zatím nic nesledujete. Na stránce produktu klikněte na „☆ Sledovat“.</p></section>
+{% endblock %}

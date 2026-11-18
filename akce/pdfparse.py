@@ -314,7 +314,7 @@ def match(blocks: list[Block], prices: list[Price], L) -> list[tuple[Block, Pric
     return out
 
 
-def parse_pdf(path: str, L, pages: list[int] | None = None) -> list[dict]:
+def parse_pdf(path: str, L, pages: list[int] | None = None, with_bbox: bool = False) -> list[dict]:
     doc = pymupdf.open(path)
     out = []
     for pi in range(len(doc)):
@@ -367,5 +367,7 @@ def parse_pdf(path: str, L, pages: list[int] | None = None) -> list[dict]:
                 "podminka": podminka,
                 "strana": pi + 1,
                 "overeno": any(c is True for c in chk),
+                **({"bbox": [min(b.x0, *[p.x0 for p in ps]), min(b.y0, *[p.y0 for p in ps]),
+                             max(b.x1, *[p.x1 for p in ps]), max(b.y1, *[p.y1 for p in ps])]} if with_bbox else {}),
             })
     return out

@@ -4,3 +4,7 @@ dist/
 cache/
 *.pdf
 .venv/
+data/
+cache/
+node_modules/
+package-lock.json

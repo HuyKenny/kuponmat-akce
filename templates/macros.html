@@ -1,0 +1,28 @@
+{% macro card(o) %}
+<article class="ka-card ka-{{ o.stav }}" data-chain="{{ o.retezec_nazev }}" data-price="{{ o.cena }}" data-unit="{{ o.jednotkova_cena or '' }}" data-disc="{{ o.sleva_pct or 0 }}" data-do="{{ o.do }}" data-id="{{ o.id }}" data-key="{{ o.key }}">
+  <div class="ka-img">
+    {% if o.img_src %}<img src="{{ o.img_src }}" alt="{{ o.nazev }}" loading="lazy" decoding="async" width="160" height="160">{% else %}<span class="ka-noimg">{{ o.retezec_nazev }}</span>{% endif %}
+    {% if o.sleva_pct %}<span class="ka-badge">−{{ o.sleva_pct }} %</span>{% endif %}
+  </div>
+  <div class="ka-body">
+    <span class="ka-chain ka-chain-{{ o.retezec }}">{{ o.retezec_nazev }}</span>
+    <h3 class="ka-name">{{ o.nazev }}</h3>
+    {% if o.baleni %}<div class="ka-pack">{{ o.baleni }}</div>{% endif %}
+    <div class="ka-price"><strong>{{ o.cena | kc }}</strong>{% if o.puvodni_cena %} <s>{{ o.puvodni_cena | kc }}</s>{% endif %}</div>
+    {% if o.jednotkova_cena and o.jednotka %}<div class="ka-unit">{{ o.jednotkova_cena | kc }} / {{ o.jednotka }}</div>{% endif %}
+    {% if o.cena_bez %}<div class="ka-cond">bez karty/aplikace {{ o.cena_bez | kc }}</div>{% endif %}
+    {% if o.podminka %}<div class="ka-cond">{{ o.podminka }}</div>{% endif %}
+    <div class="ka-valid">
+      {% if o.stav == 'budouci' %}od {{ o.od | d_short }} do {{ o.do | d_short }}
+      {% elif o.stav == 'konci' %}<b>končí dnes</b>
+      {% else %}do {{ o.do | d_short }}{% if o.days_left <= 2 %} · <b>{{ 'zítra končí' if o.days_left == 1 else 'končí za ' ~ o.days_left ~ ' dny' }}</b>{% endif %}{% endif %}
+    </div>
+    <div class="ka-actions">
+      {% if o.link %}<a href="{{ o.link }}" class="ka-src"{% if o.zdroj != 'letak' %} rel="nofollow noopener" target="_blank"{% endif %}>{{ o.link_label }} ›</a>{% endif %}
+      <button type="button" class="ka-add" data-add="{{ o.id }}" title="Přidat do nákupního seznamu">+ seznam</button>
+    </div>
+  </div>
+</article>
+{% endmacro %}
+
+{% macro grid(items) %}<div class="ka-grid">{% for o in items %}{{ card(o) }}{% endfor %}</div>{% endmacro %}

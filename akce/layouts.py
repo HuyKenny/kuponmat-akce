@@ -59,7 +59,12 @@ def _load():
     from . import chains
     out = {}
     for m in pkgutil.iter_modules(chains.__path__):
-        mod = importlib.import_module(f"{chains.__name__}.{m.name}")
+        try:
+            mod = importlib.import_module(f"{chains.__name__}.{m.name}")
+        except Exception as e:   # a broken chain file must not stop the others
+            import sys
+            print(f"! layout {m.name}: {e}", file=sys.stderr)
+            continue
         if hasattr(mod, "LAYOUT"):
             out[mod.LAYOUT.chain] = mod.LAYOUT
     return out

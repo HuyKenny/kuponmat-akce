@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "macros.html" import grid, card %}
+{% block schema %}<script type="application/ld+json">{{ schema | tojson | safe }}</script>{% endblock %}
+{% block content %}
+<div class="ka-head">
+  <h1>{{ h1 }}{% if od and do and not chain %}, {{ od | d_short }}–{{ do | d_short }}{% endif %}</h1>
+  {% if cheapest and not chain %}
+  <p class="ka-intro">V letácích a na webech {{ chains | map(attribute=0) | join(', ') }} jsme našli {{ n_now }} {{ plural(n_now, 'akční nabídku', 'akční nabídky', 'akčních nabídek') }}.
+    Nejnižší cena je <strong>{{ cheapest.cena | kc }}</strong> ({{ cheapest.nazev }}, {{ cheapest.retezec_nazev }}){% if best_unit and best_unit.id != cheapest.id %}, v přepočtu na {{ best_unit.jednotka }} vychází nejlépe {{ best_unit.nazev }} v {{ best_unit.retezec_nazev }} za {{ best_unit.jednotkova_cena | kc }}/{{ best_unit.jednotka }}{% endif %}.</p>
+  {% elif chain %}
+  <p class="ka-intro">{{ n_now }} {{ plural(n_now, 'akční nabídka', 'akční nabídky', 'akčních nabídek') }} {{ chain_name }} z aktuálního letáku{% if do %}, nejdéle do {{ do | d_short }}{% endif %}.
+    {% if letak_chain %}<a href="/letaky/{{ letak_chain }}/">Prohlédnout leták {{ chain_name }} ›</a>{% endif %}</p>
+  {% else %}
+  <p class="ka-intro">{{ name }} teď v žádném letáku v akci není.{% if last %} Naposledy ({{ last.date | d_short }}) byl v akci za {% for c, p in last.prices %}{{ p | kc }} ({{ c }}){{ ', ' if not loop.last }}{% endfor %}.{% endif %}
+    Přidejte si ho do oblíbených – po vyjití nových letáků ho uvidíte nahoře v oblíbených.</p>
+  {% endif %}
+  {% if typ or brand %}<button type="button" class="ka-fav" data-fav="{{ canonical | replace(SITE ~ BASE, '') | trim('/') }}" data-name="{{ name }}">☆ Sledovat {{ name }}</button>{% endif %}
+</div>
+
+{% if types %}
+<nav class="ka-chips" aria-label="Druhy produktů">{% for t in types %}<a class="ka-chip" href="{{ BASE }}{{ t.slug }}/">{{ t.nazev }} <small>{{ t.n }}</small></a>{% endfor %}</nav>
+{% endif %}
+{% if products %}
+<nav class="ka-chips" aria-label="Značky">{% for p in products[:40] %}<a class="ka-chip" href="{{ BASE }}{{ p.slug }}/">{{ p.znacka }} <small>{{ p['items'] | length }}</small></a>{% endfor %}</nav>
+{% endif %}
+
+{% if now %}
+<div class="ka-tools" data-tools>
+  {% if chains | length > 1 %}<div class="ka-filter" role="group" aria-label="Obchod"><button type="button" class="on" data-chain="">Všechny <small>{{ n_now }}</small></button>{% for c, n in chains %}<button type="button" data-chain="{{ c }}">{{ c }} <small>{{ n }}</small></button>{% endfor %}</div>{% endif %}
+  <label class="ka-sort">Řadit <select data-sort><option value="price">nejlevnější</option><option value="unit">cena za kg/l</option><option value="disc">největší sleva</option><option value="do">brzy končí</option></select></label>
+</div>
+{% if groups %}
+  {% for gname, gslug, items in groups %}<section class="ka-section"><h2>{{ gname }} <small>{{ items | length }}</small></h2>{{ grid(items) }}</section>{% endfor %}
+{% else %}
+<section class="ka-section">{{ grid(now) }}</section>
+{% endif %}
+{% endif %}
+
+{% if fut %}
+<section class="ka-section ka-future"><h2>Budoucí akce <small>{{ n_fut }}</small></h2><p class="ka-note">Tyto nabídky ještě nezačaly platit.</p>{{ grid(fut) }}</section>
+{% endif %}
+
+{% if chart %}
+<section class="ka-section"><h2>Vývoj akční ceny</h2>
+  <figure class="ka-chart">
+    <svg viewBox="0 0 {{ chart.W }} {{ chart.H }}" role="img" aria-label="Nejnižší akční cena podle obchodů od {{ chart.d0 | d_short }} do {{ chart.d1 | d_short }}">
+      <line x1="{{ chart.P }}" y1="{{ chart.H - chart.P }}" x2="{{ chart.W - chart.P }}" y2="{{ chart.H - chart.P }}" class="ax"/>
+      <text x="4" y="{{ chart.P }}" class="lb">{{ chart.hi | kc }}</text><text x="4" y="{{ chart.H - chart.P }}" class="lb">{{ chart.lo | kc }}</text>
+      <text x="{{ chart.P }}" y="{{ chart.H - 8 }}" class="lb">{{ chart.d0 | d_short }}</text><text x="{{ chart.W - chart.P - 40 }}" y="{{ chart.H - 8 }}" class="lb">{{ chart.d1 | d_short }}</text>
+      {% for l in chart.lines %}<polyline points="{{ l.pts }}" fill="none" stroke="{{ l.color }}" stroke-width="2.5"/><circle cx="{{ l.last[0] }}" cy="{{ l.last[1] }}" r="3.5" fill="{{ l.color }}"/>{% endfor %}
+    </svg>
+    <figcaption>{% for l in chart.lines %}<span><i style="background:{{ l.color }}"></i>{{ l.chain }}</span>{% endfor %}</figcaption>
+  </figure>
+</section>
+{% endif %}
+
+{% if faq %}
+<section class="ka-section ka-faq"><h2>Časté otázky</h2>
+  {% for q, a in faq %}<details{% if loop.first %} open{% endif %}><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}
+</section>
+{% endif %}
+
+{% if related %}
+<section class="ka-section"><h2>Další akce</h2><nav class="ka-chips">{% for r in related %}<a class="ka-chip" href="{{ BASE }}{{ r.slug }}/">{{ r.nazev }}</a>{% endfor %}</nav></section>
+{% endif %}
+<p class="ka-note">Ceny přebíráme z letáků a webů řetězců a nezaručujeme je; před nákupem je ověřte v prodejně. Aktualizováno {{ today | d_long }}.</p>
+{% endblock %}
