@@ -49,14 +49,8 @@ class NormaLayout(Layout):
         return False
 
     def _lone_lower(self, s):
-        """Lower-case first span of a title ("pruhovaný běhoun") is fine when no other title line sits right above it."""
-        if s.size < 8.5 or not (s.font.endswith("ExtraBlackCn")):
-            return False
-        for o in self._page:
-            if o is not s and o.font.endswith("ExtraBlackCn") and 0 < s.y0 - o.y0 < 12 and abs(o.x0 - s.x0) < 8 \
-                    and not JUNK.search(o.text) and not re.search(r"cca|\d\s*[×x]", o.text):
-                return False
-        return not re.search(r"cca|^\W", s.text)
+        """Lower-case title line ("pruhovaný běhoun", "koupelové bomby"): a continuation or a title that starts lower-case."""
+        return s.size >= 8.5 and s.font.endswith("ExtraBlackCn") and not re.search(r"cca|\d\s*[×x]|^\W", s.text)
 
     def is_title(self, s):
         self._call("t", s)

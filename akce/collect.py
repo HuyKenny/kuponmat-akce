@@ -32,7 +32,11 @@ ENABLED_WEB = ["lidl", "penny"]
 EXTRA_PDF = ["globus"]
 
 CHAIN_NAMES = {"albert": "Albert", "kaufland": "Kaufland", "globus": "Globus", "billa": "Billa", "coop": "COOP",
-               "norma": "Norma", "hruska": "Hruška", "teta": "Teta", "dm": "dm", "lidl": "Lidl", "penny": "Penny", "tesco": "Tesco"}
+               "norma": "Norma", "hruska": "Hruška", "teta": "Teta", "dm": "dm", "lidl": "Lidl", "penny": "Penny", "tesco": "Tesco",
+               "makro": "Makro", "rossmann": "Rossmann", "flop": "Flop", "cba": "CBA", "travelfree": "Travel FREE", "ratio": "Ratio"}
+# chains whose leaflets are also published on kuponmat.cz/letaky (scripts/kuponmat/letaky/adapters) -> link to our leaflet page;
+# the others link to the chain's own leaflet
+WP_LETAKY = {"albert", "billa", "coop", "dm", "globus", "hruska", "kaufland", "lidl", "makro", "norma", "penny", "rossmann", "teta", "tesco"}
 
 
 def offer_id(o):
@@ -128,7 +132,8 @@ def from_pdfs(chains, crops: Path | None):
                 seen.add(k)
                 bbox = it.pop("bbox", None)
                 o = {**it, "retezec": chain, "od": l.od.isoformat(), "do": l.do.isoformat(), "zdroj": "letak",
-                     "letak_slug": l.slug, "letak_hash": l.hash, "url": f"https://kuponmat.cz/letak/{l.slug}/#strana-{it['strana']}"}
+                     "letak_slug": l.slug, "letak_hash": l.hash,
+                     "url": (f"https://kuponmat.cz/letak/{l.slug}/#strana-{it['strana']}" if chain in WP_LETAKY else (l.zdroj_url or l.pdf_url))}
                 enrich(o)
                 if crops and bbox:
                     try:
