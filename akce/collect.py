@@ -25,8 +25,11 @@ from .units import parse_details
 ROOT = Path(__file__).resolve().parent.parent
 
 # chains with a verified PDF layout (tools/accuracy.py >= 90 % same price) and web sources
-ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop", "globus"]   # norma: 93 %, non-food pages still mix neighbouring prices
+ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop"]   # globus -> EXTRA_PDF; norma: 93 %, non-food pages still mix neighbouring prices
 ENABLED_WEB = ["lidl", "penny"]
+# verified layouts whose PDFs are not reachable from GitHub Actions (gapi.globus.cz times out from US runners):
+# collected on Malina (bin/kuponmat-akce-malina.sh -> data/extra/<chain>.json), merged by the Actions run
+EXTRA_PDF = ["globus"]
 
 CHAIN_NAMES = {"albert": "Albert", "kaufland": "Kaufland", "globus": "Globus", "billa": "Billa", "coop": "COOP",
                "norma": "Norma", "hruska": "Hruška", "teta": "Teta", "dm": "dm", "lidl": "Lidl", "penny": "Penny", "tesco": "Tesco"}
@@ -168,9 +171,10 @@ def main():
     ap.add_argument("--chains")
     ap.add_argument("--out", default=str(ROOT / "data"))
     ap.add_argument("--crops")
+    ap.add_argument("--extra", help="write only data/extra/<name>.json (chains collected elsewhere, e.g. on Malina)")
     a = ap.parse_args()
     want = a.chains.split(",") if a.chains else None
-    pdf_chains = [c for c in ENABLED_PDF if not want or c in want]
+    pdf_chains = [c for c in ENABLED_PDF + EXTRA_PDF if (not want and c in ENABLED_PDF) or (want and c in want)]
     web_chains = [c for c in ENABLED_WEB if not want or c in want]
     crops = Path(a.crops) if a.crops else None
     if crops:
@@ -178,6 +182,19 @@ def main():
     offers = dedupe(from_pdfs(pdf_chains, crops) + from_web(web_chains))
     today = dt.date.today().isoformat()
     offers = [o for o in offers if (o.get("do") or today) >= today]
+    if a.extra:
+        ed = Path(a.out) / "extra"
+        ed.mkdir(parents=True, exist_ok=True)
+        if offers:   # an empty run (site down) keeps the previous file
+            (ed / f"{a.extra}.json").write_text(json.dumps(offers, ensure_ascii=False, indent=0))
+        print(f"extra {a.extra}: {len(offers)} offers", file=sys.stderr)
+        return
+    # chains that cannot be downloaded from GitHub Actions (geo block) come from data/extra (written on Malina)
+    got = {o["retezec"] for o in offers}
+    for f in sorted((Path(a.out) / "extra").glob("*.json")):
+        extra = [o for o in json.loads(f.read_text()) if o["do"] >= today and o["retezec"] not in got]
+        print(f"extra {f.name}: {len(extra)} offers", file=sys.stderr)
+        offers += extra
     od = Path(a.out) / "offers"
     od.mkdir(parents=True, exist_ok=True)
     (od / f"{today}.json").write_text(json.dumps(offers, ensure_ascii=False, indent=0))
