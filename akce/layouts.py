@@ -46,6 +46,8 @@ class Layout:
 
     def skip_title(self, t):
         tl = t.lower()
+        if re.fullmatch(r"\d+\s*(?:bal|ks|x|kusů|kusy)\.?", tl.strip()):   # "5 bal." is a pack-size label, not a product
+            return True
         return any(w in tl for w in self.skip_words) or not re.search(r"[A-Za-zÁ-ž]{3}", t)
 
     def fix_title(self, t):
