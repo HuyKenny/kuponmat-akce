@@ -25,7 +25,7 @@ from .units import parse_details
 ROOT = Path(__file__).resolve().parent.parent
 
 # chains with a verified PDF layout (tools/accuracy.py >= 90 % same price) and web sources
-ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop"]
+ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop", "globus"]   # norma: 93 %, non-food pages still mix neighbouring prices
 ENABLED_WEB = ["lidl", "penny"]
 
 CHAIN_NAMES = {"albert": "Albert", "kaufland": "Kaufland", "globus": "Globus", "billa": "Billa", "coop": "COOP",
