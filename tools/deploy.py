@@ -124,7 +124,10 @@ def main():
             counter[0] += 1
             if counter[0] % 300 == 0:
                 print(f"  {counter[0]}/{len(changed)}", file=sys.stderr)
-                f.storbinary(f"STOR {REMOTE}/.manifest.json", io.BytesIO(json.dumps(done).encode()))
+                try:
+                    c.storbinary(f"STOR {REMOTE}/.manifest.json", io.BytesIO(json.dumps(done).encode()))
+                except ftplib.all_errors:
+                    pass
 
     assets = [k for k in changed if not k.endswith(".html")]
     hub = [k for k in changed if k == "index.html"]
@@ -135,6 +138,10 @@ def main():
         put(k)
     with ThreadPoolExecutor(max_workers=4) as ex:
         list(ex.map(put, pages))
+    try:
+        f.voidcmd("NOOP")
+    except ftplib.all_errors:   # the main connection idled out during the parallel upload
+        f = connect()
     for k in removed:
         try:
             f.delete(f"{REMOTE}/{k}")
