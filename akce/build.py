@@ -258,7 +258,8 @@ class Site:
             g = defaultdict(list)
             for o in now:
                 g[o.get("kategorie") or "ostatni"].append(self.card(o))
-            groups = [(CAT_NAME.get(k, "Ostatní"), k, v) for k, v in sorted(g.items(), key=lambda kv: [c for c, _ in CATEGORIES].index(kv[0]) if kv[0] in CAT_NAME else 99)]
+            groups = [(CAT_NAME.get(k, "Ostatní"), k, sorted(v, key=lambda c: -(c.get("sleva_pct") or 0))[:36], len(v))
+                      for k, v in sorted(g.items(), key=lambda kv: [c for c, _ in CATEGORIES].index(kv[0]) if kv[0] in CAT_NAME else 99)]
         faq = []
         if cheapest and not chain:
             faq.append((f"Kde je teď {h} v akci nejlevněji?", f"Nejnižší akční cena je {kc(cheapest['cena'])} – {cheapest['nazev']} v {cheapest['retezec_nazev']}"

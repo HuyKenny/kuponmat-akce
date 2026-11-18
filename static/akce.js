@@ -39,6 +39,8 @@
       });
     });
     $('[data-sort]', tools).addEventListener('change', apply);
+    var want = new URLSearchParams(location.search).get('obchod');
+    if (want) $$('.ka-filter button', tools).forEach(function (b) { if (b.dataset.chain === want) b.click(); });
   }
 
   /* ---------- shopping list (offer ids) */

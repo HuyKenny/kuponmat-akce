@@ -30,7 +30,8 @@
   <label class="ka-sort">Řadit <select data-sort><option value="price">nejlevnější</option><option value="unit">cena za kg/l</option><option value="disc">největší sleva</option><option value="do">brzy končí</option></select></label>
 </div>
 {% if groups %}
-  {% for gname, gslug, items in groups %}<section class="ka-section"><h2>{{ gname }} <small>{{ items | length }}</small></h2>{{ grid(items) }}</section>{% endfor %}
+  {% for gname, gslug, items, total in groups %}<section class="ka-section"><h2>{{ gname }} <small>{{ total }}</small></h2>{{ grid(items) }}
+    {% if total > items | length and gslug in CAT_NAME %}<p><a class="ka-chip" href="{{ BASE }}kategorie/{{ gslug }}/?obchod={{ chain_name | urlencode }}">Zobrazit všech {{ total }} z kategorie {{ gname }} ›</a></p>{% endif %}</section>{% endfor %}
 {% else %}
 <section class="ka-section">{{ grid(now) }}</section>
 {% endif %}
