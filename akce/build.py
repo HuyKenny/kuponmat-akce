@@ -74,7 +74,13 @@ class Shell:
         main_start = t.index("<main", body_start)
         main_end = t.index("</main>", main_start) + len("</main>")
         body_tag = re.match(r"<body[^>]*>", t[body_start:]).group(0)
-        self.body_open = '<body class="km-akce-static">' + t[body_start + len(body_tag):main_start]
+        body = t[body_start + len(body_tag):main_start]
+        # the shell comes from /letaky/ -> move the "current" menu state from Letáky to Akce
+        body = re.sub(r"\s(?:current-menu-item|current_page_item|current-menu-ancestor|current_page_parent)\b", "", body)
+        body = body.replace(' aria-current="page"', "")
+        body = re.sub(r'(<li[^>]*class=")([^"]*)("[^>]*>\s*<a[^>]*href="https://kuponmat\.cz/akce/")',
+                      lambda m: m.group(1) + m.group(2) + " current-menu-item" + m.group(3).replace("<a", '<a aria-current="page"', 1), body, count=1)
+        self.body_open = '<body class="km-akce-static">' + body
         self.foot = t[main_end:]
 
 
@@ -87,7 +93,9 @@ class Site:
         self.out = out
         self.env = Environment(loader=FileSystemLoader(str(ROOT / "templates")), autoescape=select_autoescape(["html"]))
         self.env.filters.update(kc=kc, d_short=d_short, d_long=d_long)
-        self.env.globals.update(BASE=BASE, SITE=SITE, CAT_NAME=CAT_NAME, plural=plural, today=today)
+        kat = ROOT / "static" / "kat"
+        cat_img = {p.stem: f"{BASE}kat/{p.name}" for p in kat.glob("*.jpg")} if kat.exists() else {}
+        self.env.globals.update(BASE=BASE, SITE=SITE, CAT_NAME=CAT_NAME, plural=plural, today=today, cat_img=cat_img)
         self.pages = []   # (path, indexable)
 
     # ------------------------------------------------------------ helpers
@@ -219,9 +227,24 @@ class Site:
         cats = [{"slug": cs, "nazev": cn, "n": len(by_cat.get(cs, [])),
                  "types": [t for t in TYPES if t["kategorie"] == cs and by_type.get(t["slug"])]} for cs, cn in CATEGORIES if by_cat.get(cs)]
         popular = sorted(prods.values(), key=lambda p: -len(p["items"]))[:40]
-        self.render(BASE, "hub.html", title="Akce v letácích: co je tento týden ve slevě",
-                    description=f"Aktuální akce z letáků a webů {', '.join(chain_names[c] for c in chains[:8])}. {len(cur)} akčních nabídek, ceny za kg, platnost a srovnání řetězců.",
-                    cats=cats, top=top_u[:24], chains=[(c, chain_names[c], len(by_chain[c])) for c in chains], n=len(cur), popular=popular)
+        cn = [chain_names[c] for c in chains]
+        week_end = max((o["do"] for o in cur if o["od"] <= self.today), default=self.today)
+        faq = [
+            ("Které obchody máte v přehledu akcí?", f"Tento týden: {', '.join(f'{chain_names[c]} ({len(by_chain[c])})' for c in chains)}. "
+             "Letáky čteme každý den, nové akce se objeví zpravidla ve středu a ve čtvrtek ráno."),
+            ("Jak najdu nejlevnější nabídku?", "Otevřete druh zboží (např. máslo nebo pivo) a seřaďte nabídky podle ceny za kg/l – tak porovnáte i různě velká balení. "
+             "Filtrem nahoře zobrazíte jen jeden obchod."),
+            ("Do kdy aktuální akce platí?", f"Většina letáků tohoto týdne platí do {d_long(week_end)}; přesné datum je u každé nabídky. Akce, které teprve začnou, jsou v části Budoucí akce."),
+            ("Co znamená cena s aplikací nebo kartou?", "Řada řetězců dává nejnižší cenu jen členům věrnostního programu. Takovou cenu ukazujeme jako akční a pod ní uvádíme i cenu bez karty."),
+        ]
+        schema = {"@context": "https://schema.org", "@graph": [
+            {"@type": "CollectionPage", "name": "Akce v letácích", "url": SITE + BASE, "isPartOf": {"@type": "WebSite", "name": "KupónMat", "url": SITE + "/"},
+             "hasPart": [{"@type": "WebPage", "name": c["nazev"], "url": f"{SITE}{BASE}kategorie/{c['slug']}/"} for c in cats]},
+            {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a_}} for q, a_ in faq]}]}
+        self.render(BASE, "hub.html", title=f"Akce v letácích tento týden – {len(cur)} slev v {', '.join(cn[:4])}",
+                    description=f"Co je tento týden v akci? {len(cur)} akčních nabídek z letáků {', '.join(cn)} podle produktů: ceny za kg, platnost do {d_short(week_end)} a srovnání obchodů.",
+                    cats=cats, top=top_u[:24], chains=[(c, chain_names[c], len(by_chain[c])) for c in chains], n=len(cur), popular=popular,
+                    faq=faq, schema=schema, og_image=SITE + BASE + "kat/mlecne-vyrobky-a-vejce.jpg")
         self.render(BASE + "hledat/", "search.html", indexable=False, title="Hledat v akcích", description="Vyhledávání v aktuálních akcích z letáků.")
         self.render(BASE + "oblibene/", "favorites.html", indexable=False, title="Oblíbené a nákupní seznam", description="Vaše oblíbené produkty a nákupní seznam z akcí.")
         self.write_index(cur)
@@ -269,6 +292,26 @@ class Site:
         if do:
             faq.append(("Do kdy akce platí?", f"Nejdéle platí do {d_long(do)}. U každé nabídky je uvedeno její datum; nabídky, které ještě nezačaly, jsou v části Budoucí akce."))
         faq.append(("Odkud ceny jsou?", "Z aktuálních letáků řetězců a z jejich webů. U každé nabídky je odkaz na stranu letáku nebo na produkt na webu obchodu. Ceny nezaručujeme, před nákupem je ověřte v prodejně."))
+        seo_text, seo_h2 = [], ""
+        if now:
+            disc = [o["sleva_pct"] for o in now if o.get("sleva_pct")]
+            brands = Counter(o["znacka"] for o in now if o.get("znacka"))
+            top_chain = chains.most_common(1)[0]
+            seo_h2 = f"{title} v akci: přehled tohoto týdne" if not chain else f"Co je v akci v {chain_name}"
+            p1 = (f"Tento týden je {h} v akci v {len(chains)} {plural(len(chains), 'obchodě', 'obchodech', 'obchodech')}"
+                  f" ({', '.join(c for c, _ in chains.most_common())}). Nejvíc nabídek má {top_chain[0]} ({top_chain[1]}).") if not chain else (
+                  f"V aktuálním letáku {chain_name} je {len(now)} akčních nabídek v {len({o.get('kategorie') for o in now if o.get('kategorie')})} kategoriích.")
+            if disc:
+                p1 += f" Průměrná sleva je {round(sum(disc) / len(disc))} %, nejvyšší {max(disc)} %."
+            seo_text.append(p1)
+            if brands and not brand:
+                seo_text.append("V akci jsou mimo jiné značky " + ", ".join(b for b, _ in brands.most_common(8)) + ". "
+                                "Na stránce každé značky najdete jen její nabídky a vývoj akční ceny.")
+            if best_unit and not chain:
+                seo_text.append(f"Při porovnání balení rozhoduje cena za {best_unit['jednotka']}: nejvýhodněji teď vychází {best_unit['nazev']}"
+                                f" v {best_unit['retezec_nazev']} ({kc(best_unit['jednotkova_cena'])}/{best_unit['jednotka']}). "
+                                "Nabídky si můžete seřadit podle ceny za kg nebo litr přepínačem nad výpisem.")
+        hero = (category or (typ["kategorie"] if typ else None))
         graph = [{"@type": "BreadcrumbList", "itemListElement": [
             {"@type": "ListItem", "position": i + 1, "name": n, **({"item": SITE + u} if u else {"item": SITE + path})}
             for i, (n, u) in enumerate([("Domů", "/")] + list(crumbs))]}]
@@ -282,7 +325,8 @@ class Site:
                 for i, o in enumerate(now[:20])]})
         if faq:
             graph.append({"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a_}} for q, a_ in faq]})
-        self.render(path, "listing.html", indexable=indexable, schema={"@context": "https://schema.org", "@graph": graph}, title=seo_title, description=desc, h1=(f"{title} v akci" if not chain else title),
+        self.render(path, "listing.html", indexable=indexable, schema={"@context": "https://schema.org", "@graph": graph},
+                    seo_text=seo_text, seo_h2=seo_h2, og_image=(f"{SITE}{BASE}kat/{hero}.jpg" if hero and (ROOT / "static" / "kat" / f"{hero}.jpg").exists() else None), title=seo_title, description=desc, h1=(f"{title} v akci" if not chain else title),
                     name=title, h=h, now=[self.card(o) for o in now][:300], fut=[self.card(o) for o in fut][:120], n_now=len(now), n_fut=len(fut),
                     chains=chains.most_common(), cheapest=cheapest, best_unit=best_unit, od=od, do=do, typ=typ, products=products, crumbs=crumbs,
                     chart=self.chart(history_key) if history_key else None, related=related, types=types, category=category, chain=chain,
@@ -369,7 +413,10 @@ def main():
     out = Path(a.out)
     (out / BASE.strip("/")).mkdir(parents=True, exist_ok=True)
     for f in (ROOT / "static").glob("*"):
-        shutil.copy(f, out / BASE.strip("/") / f.name)
+        if f.is_dir():
+            shutil.copytree(f, out / BASE.strip("/") / f.name, dirs_exist_ok=True)
+        else:
+            shutil.copy(f, out / BASE.strip("/") / f.name)
     site = Site(offers, history, a.today, Shell(Path(a.shell)), out)
     site.build()
     print(f"{len(site.pages)} pages ({sum(1 for _, i in site.pages if i)} indexable), {len(offers)} offers")

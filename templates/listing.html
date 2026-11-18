@@ -2,7 +2,8 @@
 {% from "macros.html" import grid, card %}
 {% block schema %}<script type="application/ld+json">{{ schema | tojson | safe }}</script>{% endblock %}
 {% block content %}
-<div class="ka-head">
+{% set hero_img = cat_img[category] if category else (cat_img[typ.kategorie] if typ else None) %}
+<div class="ka-head{% if hero_img %} ka-hero{% endif %}"><div>
   <h1>{{ h1 }}{% if od and do and not chain %}, {{ od | d_short }}–{{ do | d_short }}{% endif %}</h1>
   {% if cheapest and not chain %}
   <p class="ka-intro">V letácích a na webech {{ chains | map(attribute=0) | join(', ') }} jsme našli {{ n_now }} {{ plural(n_now, 'akční nabídku', 'akční nabídky', 'akčních nabídek') }}.
@@ -14,8 +15,9 @@
   <p class="ka-intro">{{ name }} teď v žádném letáku v akci není.{% if last %} Naposledy ({{ last.date | d_short }}) byl v akci za {% for c, p in last.prices %}{{ p | kc }} ({{ c }}){{ ', ' if not loop.last }}{% endfor %}.{% endif %}
     Přidejte si ho do oblíbených – po vyjití nových letáků ho uvidíte nahoře v oblíbených.</p>
   {% endif %}
+  {% if n_now %}<div class="ka-stats"><span class="ka-stat">{{ n_now }} {{ plural(n_now, 'nabídka', 'nabídky', 'nabídek') }}</span><span class="ka-stat">{{ chains | length }} {{ plural(chains | length, 'obchod', 'obchody', 'obchodů') }}</span>{% if do %}<span class="ka-stat">platí do {{ do | d_short }}</span>{% endif %}</div>{% endif %}
   {% if typ or brand %}<button type="button" class="ka-fav" data-fav="{{ canonical | replace(SITE ~ BASE, '') | trim('/') }}" data-name="{{ name }}">☆ Sledovat {{ name }}</button>{% endif %}
-</div>
+</div>{% if hero_img %}<img src="{{ hero_img }}" alt="{{ name }} v akci" width="480" height="360" fetchpriority="high">{% endif %}</div>
 
 {% if types %}
 <nav class="ka-chips" aria-label="Druhy produktů">{% for t in types %}<a class="ka-chip" href="{{ BASE }}{{ t.slug }}/">{{ t.nazev }} <small>{{ t.n }}</small></a>{% endfor %}</nav>
@@ -39,6 +41,10 @@
 
 {% if fut %}
 <section class="ka-section ka-future"><h2>Budoucí akce <small>{{ n_fut }}</small></h2><p class="ka-note">Tyto nabídky ještě nezačaly platit.</p>{{ grid(fut) }}</section>
+{% endif %}
+
+{% if seo_text %}
+<section class="ka-section ka-text"><h2>{{ seo_h2 }}</h2>{% for para in seo_text %}<p>{{ para }}</p>{% endfor %}</section>
 {% endif %}
 
 {% if chart %}
