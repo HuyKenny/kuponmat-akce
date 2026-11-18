@@ -20,7 +20,7 @@ if zone and tok:
         print("purge", r.status_code, r.json().get("success"))
 key = os.environ.get("INDEXNOW_KEY")
 if key and urls:
-    for ep in ("https://api.indexnow.org/indexnow", "https://search.seznam.cz/indexnow"):
+    for ep in ("https://api.indexnow.org/indexnow",):   # shared with Bing, Seznam, Yandex…
         r = requests.post(ep, json={"host": "kuponmat.cz", "key": key, "keyLocation": f"https://kuponmat.cz/{key}.txt", "urlList": urls[:10000]}, timeout=60)
         print("indexnow", ep, r.status_code)
 print(f"{len(urls)} changed pages")
