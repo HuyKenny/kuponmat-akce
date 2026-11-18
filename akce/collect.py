@@ -25,7 +25,9 @@ from .units import parse_details
 ROOT = Path(__file__).resolve().parent.parent
 
 # chains with a verified PDF layout (tools/accuracy.py >= 90 % same price) and web sources
-ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop"]   # globus -> EXTRA_PDF; norma: 93 %, non-food pages still mix neighbouring prices
+ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop", "norma", "makro", "teta", "ratio"]   # travelfree: parser OK, robots.txt disallows PDFs -> off   # globus -> EXTRA_PDF
+# only these leaflets of a chain (slug substring) — the rest is not verified (Makro: B2B gastro / nonfood catalogues)
+LEAFLET_ONLY = {"makro": ("maloobchod", "pro-milovniky-jidla")}
 ENABLED_WEB = ["lidl", "penny"]
 # verified layouts whose PDFs are not reachable from GitHub Actions (gapi.globus.cz times out from US runners):
 # collected on Malina (bin/kuponmat-akce-malina.sh -> data/extra/<chain>.json), merged by the Actions run
@@ -114,6 +116,8 @@ def from_pdfs(chains, crops: Path | None):
     for chain, l in current_leaflets(chains):
         L = LAYOUTS.get(chain)
         if not L:
+            continue
+        if chain in LEAFLET_ONLY and not any(x in l.slug for x in LEAFLET_ONLY[chain]):
             continue
         with tempfile.TemporaryDirectory() as td:
             f = Path(td) / "l.pdf"

@@ -11,7 +11,7 @@ from akce.layouts import Layout
 VAT_PRICE = re.compile(r"^\d{1,3}(?:[ \u00a0]?\d{3})*,\d{2}\s*[*×]$")
 
 
-TIER = re.compile(r"(?i)bal\.|cena od|^\d+\s*(?:[–-]\s*\d+)?\s*ks$")
+TIER = re.compile(r"(?i)bal\.|cena od|při koup|cena za 1 ?ks|^\d+\s*(?:[–-]\s*\d+)?\s*ks$")
 
 
 class MakroLayout(Layout):
@@ -27,8 +27,13 @@ class MakroLayout(Layout):
             self._tiers.append(s)
 
     def _is_tiered(self, s):
-        """A quantity-tier label ("1–3 BAL.", "15ks") right above the small price: no consumer price for one piece."""
-        return any(0 <= s.y0 - t.y0 <= 52 and t.x0 - 28 <= s.x0 <= t.x1 + 28 for t in self._tiers)
+        """Quantity tiers ("1–3 BAL." 71,27* / "4–9 BAL." 65,12* / "10 BAL. A VÍCE" yellow): keep only the first tier (the price for
+        one pack = base consumer price); "CENA OD" (price of the cheapest variant) and the other tiers are dropped."""
+        near = [t for t in self._tiers if 0 <= s.y0 - t.y0 <= 52 and t.x0 - 28 <= s.x0 <= t.x1 + 28]
+        if not near:
+            return False
+        t = min(near, key=lambda t: s.y0 - t.y0)
+        return not re.match(r"1(?:[–-]\d+)?(?:bal|ks)", re.sub(r"\s+", "", t.text).lower())
 
     def is_title(self, s):
         self._call("t", s)
@@ -39,7 +44,7 @@ class MakroLayout(Layout):
             # titles are short and the price box sits at the right bottom of the (4-column, ~120 pt wide) tile: widen the
             # title so that its own price is not farther away than the neighbouring tile's one
             s._wide = True
-            s.x1 = max(s.x1, s.x0 + 118)
+            s.x1 = max(s.x1, s.x0 + 105)
         return ok
 
     def is_detail(self, s):
@@ -69,8 +74,8 @@ LAYOUT = MakroLayout(
     title_size=(7.2, 12),
     detail_font=r"CAMetro-Regular",
     detail_size=(6, 7.2),
-    min_price_size=5,
-    main_size=5,
+    min_price_size=3,
+    main_size=3,
     price_side="right",
     side_penalty=100,
     max_dist=160,
