@@ -33,6 +33,22 @@ class FlopLayout(Layout):
                 ds = [d for d in details if 0 < d.y0 - t.y0 < 60 and abs(d.x0 - t.x0) < 6]
                 if ds and "klub" not in min(ds, key=lambda d: d.y0).text:
                     min(ds, key=lambda d: d.y0).text += " s klubem"
+            if k.text.strip().lower() == "cena od":          # price of the cheapest variant only -> the whole tile is dropped
+                k.font, k.text = "x", ""
+                ns = [n for n in allsp if re.fullmatch(r"\d{1,4}", n.text.strip()) and n.size >= 20 and abs(n.cx - k.cx) < 40 and -12 < n.y0 - k.y0 < 40]
+                if not ns:
+                    continue
+                n = min(ns, key=lambda n: n.y0)
+                self._skip.add(id(n))
+                for dsp in allsp:
+                    if re.fullmatch(r"\d{2}", dsp.text.strip()) and 8 <= dsp.size <= 17 and abs(dsp.y0 - n.y0) < 12 and -1 <= dsp.x0 - n.x1 < 8:
+                        self._skip.add(id(dsp))
+                ts = [t for t in titles if t.y0 > n.y1 - 2 and abs(t.x0 - n.x0) < 45 and t.y0 - n.y1 < 40]
+                if ts:
+                    t0 = min(ts, key=lambda t: t.y0)
+                    for x in allsp:
+                        if abs(x.x0 - t0.x0) < 6 and 0 <= x.y0 - t0.y0 < 60 and "Sizmo" in x.font and x.size <= 9:
+                            x.font, x.text = "x", ""      # title blocks are already built: an empty text drops them
             if k.text.strip() == "/KS":
                 for n in allsp:
                     if re.fullmatch(r"\d{1,4}", n.text.strip()) and 16.8 <= n.size <= 19 and abs(n.cx - k.cx) < 50 and abs(n.cy - k.cy) < 50:
@@ -45,10 +61,20 @@ class FlopLayout(Layout):
         if self.__dict__.get("_in_detail"):
             return super().is_title(s)
         if self.__dict__.get("_phase") != "title":
-            self._all = []
+            self._all, self._tl = [], []
             self._phase = "title"
         self._all.append(s)
-        return super().is_title(s)
+        if re.fullmatch(r"\d{1,2}\s?%", s.text.strip()):         # "38%" (alcohol content) is not a discount flag
+            s.text = re.sub(r"\s?%", "\u2009%", s.text.strip())
+        ok = super().is_title(s)
+        if ok:
+            for a in self._tl:                                    # centred / right-aligned title lines: unify x0 so they group
+                up, lo = (a, s) if a.y0 < s.y0 else (s, a)
+                if 6 <= lo.y0 - up.y0 <= 12 and abs(up.size - lo.size) < 0.3 and abs(up.x0 - lo.x0) > 2 \
+                        and (abs(up.x1 - lo.x1) < 3 or abs(up.cx - lo.cx) < 3):
+                    up.x0 = lo.x0 = min(up.x0, lo.x0)
+            self._tl.append(s)
+        return ok
 
     def is_price(self, s):
         ok = super().is_price(s) and id(s) not in self.__dict__.get("_skip", ())
@@ -84,7 +110,7 @@ LAYOUT = FlopLayout(
     chain="flop",
     title_font=r"SizmoPro-(Bold|Medium)$",
     title_size=(7.8, 8.4),
-    detail_font=r"SizmoPro(-Bold)?$",
+    detail_font=r"SizmoPro$",
     detail_size=(5.5, 7.1),
     price_font=r"SizmoPro-(Bold|Medium)?$|SizmoPro$",
     min_price_size=8,
@@ -95,4 +121,5 @@ LAYOUT = FlopLayout(
     member_label="s Flop klubem",
     member_rx=r"klub",
     skip_words=("nálepk", "soutěž", "platnost"),
+    title_fixes=[(r"\s*\*+", "")],              # footnote asterisks ("ŠPEKÁČKY TOP*")
 )

@@ -25,7 +25,7 @@ from .units import parse_details
 ROOT = Path(__file__).resolve().parent.parent
 
 # chains with a verified PDF layout (tools/accuracy.py >= 90 % same price) and web sources
-ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop", "norma", "makro", "teta", "ratio"]   # travelfree: parser OK, robots.txt disallows PDFs -> off   # globus -> EXTRA_PDF
+ENABLED_PDF = ["albert", "kaufland", "hruska", "billa", "coop", "norma", "makro", "teta", "ratio", "flop", "cba"]   # travelfree: parser OK, robots.txt disallows PDFs -> off   # globus -> EXTRA_PDF
 # only these leaflets of a chain (slug substring) — the rest is not verified (Makro: B2B gastro / nonfood catalogues)
 LEAFLET_ONLY = {"makro": ("maloobchod", "pro-milovniky-jidla")}
 ENABLED_WEB = ["lidl", "penny"]
@@ -35,7 +35,7 @@ EXTRA_PDF = ["globus"]
 
 CHAIN_NAMES = {"albert": "Albert", "kaufland": "Kaufland", "globus": "Globus", "billa": "Billa", "coop": "COOP",
                "norma": "Norma", "hruska": "Hruška", "teta": "Teta", "dm": "dm", "lidl": "Lidl", "penny": "Penny", "tesco": "Tesco",
-               "makro": "Makro", "rossmann": "Rossmann", "flop": "Flop", "cba": "CBA", "travelfree": "Travel FREE", "ratio": "Ratio"}
+               "makro": "Makro", "rossmann": "Rossmann", "flop": "Flop", "cba": "CBA", "travelfree": "Travel FREE", "ratio": "Ratio", "floptop": "Flop TOP"}
 # chains whose leaflets are also published on kuponmat.cz/letaky (scripts/kuponmat/letaky/adapters) -> link to our leaflet page;
 # the others link to the chain's own leaflet
 WP_LETAKY = {"albert", "billa", "coop", "dm", "globus", "hruska", "kaufland", "lidl", "makro", "norma", "penny", "rossmann", "teta", "tesco"}
@@ -135,7 +135,8 @@ def from_pdfs(chains, crops: Path | None):
                     continue
                 seen.add(k)
                 bbox = it.pop("bbox", None)
-                o = {**it, "retezec": chain, "od": l.od.isoformat(), "do": l.do.isoformat(), "zdroj": "letak",
+                rid = "floptop" if chain == "flop" and l.varianta == "top" else chain   # Flop TOP is its own shop format
+                o = {**it, "retezec": rid, "od": l.od.isoformat(), "do": l.do.isoformat(), "zdroj": "letak",
                      "letak_slug": l.slug, "letak_hash": l.hash,
                      "url": (f"https://kuponmat.cz/letak/{l.slug}/#strana-{it['strana']}" if chain in WP_LETAKY else (l.zdroj_url or l.pdf_url))}
                 enrich(o)

@@ -9,7 +9,7 @@ HERE = Path(__file__).resolve().parent / "letaky"
 sys.path[:0] = [str(HERE), str(HERE / "adapters")]
 from km_net import SESSION  # noqa: E402
 
-PDF_CHAINS = ["albert", "kaufland", "globus", "billa", "coop", "norma", "hruska", "teta", "dm", "travelfree", "ratio"]
+PDF_CHAINS = ["albert", "kaufland", "globus", "billa", "coop", "norma", "hruska", "teta", "dm", "travelfree", "ratio", "flop", "cba"]
 SKIP_TITLES = ("katalog", "klubový leták")   # assortment catalogues: few promo prices, many pages
 
 
